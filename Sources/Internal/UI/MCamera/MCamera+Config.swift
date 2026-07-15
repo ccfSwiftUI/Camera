@@ -10,6 +10,7 @@
 
 
 import SwiftUI
+import AVFoundation
 
 extension MCamera { @MainActor class Config {
     // MARK: Screens
@@ -20,6 +21,7 @@ extension MCamera { @MainActor class Config {
     // MARK: Actions
     var imageCapturedAction: (UIImage, MCamera.Controller) -> () = { _,_ in }
     var videoCapturedAction: (URL, MCamera.Controller) -> () = { _,_ in }
+    var codeScannedAction: (String, AVMetadataObject.ObjectType, MCamera.Controller) -> () = { _,_,_ in }
     var closeMCameraAction: () -> () = {}
 
     // MARK: Others

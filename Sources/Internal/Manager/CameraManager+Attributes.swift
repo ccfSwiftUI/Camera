@@ -28,6 +28,8 @@ struct CameraManagerAttributes {
     var cameraFilters: [CIFilter] = []
     var mirrorOutput: Bool = false
     var isGridVisible: Bool = true
+    var codeScanningTypes: [AVMetadataObject.ObjectType] = []
+    var scannedCode: CameraScannedCode? = nil
 
     var deviceOrientation: AVCaptureVideoOrientation = .portrait
     var frameOrientation: CGImagePropertyOrientation = .right

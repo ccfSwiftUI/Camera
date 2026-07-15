@@ -11,6 +11,7 @@
 
 import SwiftUI
 import AVKit
+import AVFoundation
 
 // MARK: Initializer
 public extension MCamera {
@@ -248,6 +249,17 @@ public extension MCamera {
     func setGridVisibility(_ shouldShowGrid: Bool) -> Self { manager.attributes.isGridVisible = shouldShowGrid; return self }
 
     /**
+     Enables real-time QR code and barcode scanning while the camera session is running.
+
+     The scanner uses the selected metadata types and reports each newly detected value through ``onCodeScanned(_:)``.
+     Call this before ``startSession()``. Leave it disabled (the default) to preserve the usual photo/video-only camera.
+     */
+    func setCodeScanning(_ isEnabled: Bool = true, types: [AVMetadataObject.ObjectType] = [.qr, .ean8, .ean13, .code128, .code39, .code93, .upce, .pdf417, .aztec, .dataMatrix, .interleaved2of5, .itf14]) -> Self {
+        manager.setCodeScanningTypes(isEnabled ? types : [])
+        return self
+    }
+
+    /**
      Changes the shape of the focus indicator visible when touching anywhere on the camera screen.
      */
     func setFocusImage(_ image: UIImage) -> Self { manager.cameraMetalView.focusIndicator.image = image; return self }
@@ -345,6 +357,14 @@ public extension MCamera {
      ```
      */
     func onVideoCaptured(_ action: @escaping (URL, MCamera.Controller) -> ()) -> Self { config.videoCapturedAction = action; return self }
+
+    /**
+     Defines the action called when the camera recognizes a QR code or barcode.
+
+     The callback contains the encoded value, its AVFoundation metadata type, and a controller for closing or otherwise controlling the camera.
+     A value is reported once until the camera observes a different value.
+     */
+    func onCodeScanned(_ action: @escaping (String, AVMetadataObject.ObjectType, MCamera.Controller) -> ()) -> Self { config.codeScannedAction = action; return self }
 }
 
 // MARK: Others

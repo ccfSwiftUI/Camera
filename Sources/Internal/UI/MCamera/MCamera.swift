@@ -37,6 +37,7 @@ import SwiftUI
  Use one of the methods below to set actions that will be called after capturing media:
     - ``onImageCaptured(_:)``
     - ``onVideoCaptured(_:)``
+    - ``onCodeScanned(_:)``
  - note: If there is no **Captured Media Screen**, the action is called immediately after the media is captured, otherwise it is triggered after the user accepts the captured media in the **Captured Media Screen**.
 
  ## Camera Configuration
@@ -57,6 +58,7 @@ import SwiftUI
     - ``setCameraFilters(_:)``
     - ``setMirrorOutput(_:)``
     - ``setGridVisibility(_:)``
+    - ``setCodeScanning(_:types:)``
     - ``setFocusImage(_:)``
     - ``setFocusImageColor(_:)``
     - ``setFocusImageSize(_:)``
@@ -100,6 +102,7 @@ public struct MCamera: View {
         ZStack(content: createContent)
             .onDisappear(perform: onDisappear)
             .onChange(of: manager.attributes.capturedMedia, perform: onCapturedMediaChange)
+            .onChange(of: manager.attributes.scannedCode, perform: onScannedCodeChange)
     }}
 }
 private extension MCamera {
@@ -140,6 +143,10 @@ private extension MCamera {
     func onCapturedMediaChange(_ capturedMedia: MCameraMedia?) {
         guard let capturedMedia, config.capturedMediaScreen == nil else { return }
         notifyUserOfMediaCaptured(capturedMedia)
+    }
+    func onScannedCodeChange(_ code: CameraScannedCode?) {
+        guard let code else { return }
+        config.codeScannedAction(code.value, code.type, .init(mCamera: self))
     }
 }
 private extension MCamera {

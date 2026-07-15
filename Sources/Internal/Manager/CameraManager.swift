@@ -23,6 +23,7 @@ import AVKit
     // MARK: Output
     private(set) var photoOutput: CameraManagerPhotoOutput = .init()
     private(set) var videoOutput: CameraManagerVideoOutput = .init()
+    private(set) var codeOutput: CameraManagerCodeOutput = .init()
 
     // MARK: UI Elements
     private(set) var cameraView: UIView!
@@ -83,6 +84,7 @@ private extension CameraManager {
     func setupDeviceOutput() throws(MCameraError) {
         try photoOutput.setup(parent: self)
         try videoOutput.setup(parent: self)
+        try codeOutput.setup(parent: self, types: attributes.codeScanningTypes)
     }
     func setupFrameRecorder() throws(MCameraError) {
         let captureVideoOutput = AVCaptureVideoDataOutput()
@@ -131,6 +133,7 @@ extension CameraManager {
         motionManager.reset()
         videoOutput.reset()
         notificationCenterManager.reset()
+        codeOutput.reset()
     }
 }
 
@@ -141,6 +144,16 @@ extension CameraManager {
 
 // MARK: Capture Output
 extension CameraManager {
+    func setCodeScanningTypes(_ types: [AVMetadataObject.ObjectType]) {
+        guard !isChanging else { return }
+        attributes.codeScanningTypes = types
+    }
+
+    func setScannedCode(_ code: CameraScannedCode) {
+        guard attributes.scannedCode?.value != code.value || attributes.scannedCode?.type != code.type else { return }
+        attributes.scannedCode = code
+    }
+
     func captureOutput() {
         guard !isChanging else { return }
 

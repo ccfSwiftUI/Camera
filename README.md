@@ -103,6 +103,10 @@
         <td>Video capture (with or without sound)</td>
     </tr>
     <tr>
+        <td>🔳</td>
+        <td>Real-time QR code and barcode scanning</td>
+    </tr>
+    <tr>
         <td>📸</td>
         <td>Camera position changes</td>
     </tr>
@@ -210,6 +214,22 @@ The main problem we wanted to solve was the complexity of implementing camera in
 <!--Documentation-->
 # 🚀 How to use it?
 Visit the framework's [documentation page](https://link.mijick.com/camera-wiki) to learn how to integrate your project with **MijickCamera**.
+
+## QR code and barcode scanning
+
+Enable scanning before starting the session. Photo and video controls remain available while scanning is active.
+
+```swift
+MCamera()
+    .setCodeScanning()
+    .onCodeScanned { value, type, controller in
+        print("Scanned: \(value), type: \(type.rawValue)")
+        controller.closeMCamera()
+    }
+    .startSession()
+```
+
+By default the scanner recognizes QR, EAN-8/EAN-13, UPC-E, Code 39/93/128, PDF417, Aztec, Data Matrix, Interleaved 2 of 5, and ITF-14. To limit recognition to selected formats, pass `types`, for example: `.setCodeScanning(types: [.qr, .ean13])`.
 
 <!--Community-->
 # 🍀 Community

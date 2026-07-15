@@ -22,6 +22,13 @@ import SwiftUI
 
 // MARK: Setup
 extension CameraManagerTests {
+    @Test("Setup: Code Scanning") func setupWithCodeScanning() async throws {
+        cameraManager.setCodeScanningTypes([.qr, .ean13])
+        try await setupCamera()
+
+        #expect(cameraManager.captureSession.outputs.count == 4)
+    }
+
     @Test("Setup: Default Attributes") func setupWithDefaultAttributes() async throws {
         try await setupCamera()
 
