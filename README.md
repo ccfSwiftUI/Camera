@@ -221,15 +221,16 @@ Enable scanning before starting the session. Photo and video controls remain ava
 
 ```swift
 MCamera()
-    .setCodeScanning()
-    .onCodeScanned { value, type, controller in
+    .setCodeScanning(capturesImage: true)
+    .onCodeScanned { value, type, image, controller in
         print("Scanned: \(value), type: \(type.rawValue)")
+        // `image` is a high-resolution frame suitable for OCR, when available.
         controller.closeMCamera()
     }
     .startSession()
 ```
 
-By default the scanner recognizes QR, EAN-8/EAN-13, UPC-E, Code 39/93/128, PDF417, Aztec, Data Matrix, Interleaved 2 of 5, and ITF-14. To limit recognition to selected formats, pass `types`, for example: `.setCodeScanning(types: [.qr, .ean13])`.
+By default the scanner recognizes QR, EAN-8/EAN-13, UPC-E, Code 39/93/128, PDF417, Aztec, Data Matrix, Interleaved 2 of 5, and ITF-14. To limit recognition to selected formats, pass `types`, for example: `.setCodeScanning(types: [.qr, .ean13])`. Pass `capturesImage: true` to capture a high-resolution image for the matching `onCodeScanned` callback; this does not show the captured-media screen or trigger `onImageCaptured`.
 
 <!--Community-->
 # 🍀 Community

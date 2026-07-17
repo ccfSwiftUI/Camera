@@ -19,6 +19,7 @@ import AVKit
     private(set) var captureSession: any CaptureSession
     private(set) var frontCameraInput: (any CaptureDeviceInput)?
     private(set) var backCameraInput: (any CaptureDeviceInput)?
+    private let getCaptureDeviceInput: (AVMediaType, AVCaptureDevice.Position?, Bool) -> (any CaptureDeviceInput)?
 
     // MARK: Output
     private(set) var photoOutput: CameraManagerPhotoOutput = .init()
@@ -30,6 +31,9 @@ import AVKit
     private(set) var cameraLayer: AVCaptureVideoPreviewLayer = .init()
     private(set) var cameraMetalView: CameraMetalView = .init()
     private(set) var cameraGridView: CameraGridView = .init()
+    #if DEBUG
+    private(set) var codeScanningDebugView: CameraCodeScanningDebugView = .init()
+    #endif
 
     // MARK: Others
     private(set) var permissionsManager: CameraManagerPermissionsManager = .init()
@@ -39,8 +43,11 @@ import AVKit
     // MARK: Initializer
     init<CS: CaptureSession, CDI: CaptureDeviceInput>(captureSession: CS, captureDeviceInputType: CDI.Type) {
         self.captureSession = captureSession
-        self.frontCameraInput = CDI.get(mediaType: .video, position: .front)
-        self.backCameraInput = CDI.get(mediaType: .video, position: .back)
+        self.frontCameraInput = CDI.get(mediaType: .video, position: .front, prefersAutoSwitchingCamera: false)
+        self.backCameraInput = CDI.get(mediaType: .video, position: .back, prefersAutoSwitchingCamera: true)
+        self.getCaptureDeviceInput = { mediaType, position, prefersAutoSwitchingCamera in
+            CDI.get(mediaType: mediaType, position: position, prefersAutoSwitchingCamera: prefersAutoSwitchingCamera)
+        }
     }
 }
 
@@ -64,6 +71,9 @@ extension CameraManager {
         motionManager.setup(parent: self)
         try cameraMetalView.setup(parent: self)
         cameraGridView.setup(parent: self)
+        #if DEBUG
+        codeScanningDebugView.setup(parent: self)
+        #endif
 
         startSession()
     }
@@ -103,26 +113,28 @@ private extension CameraManager {
 }
 private extension CameraManager {
     func getAudioInput() -> (any CaptureDeviceInput)? {
-        guard attributes.isAudioSourceAvailable,
-              let deviceInput = frontCameraInput ?? backCameraInput
-        else { return nil }
-
-        let captureDeviceInputType = type(of: deviceInput)
-        let audioInput = captureDeviceInputType.get(mediaType: .audio, position: .unspecified)
-        return audioInput
+        guard attributes.isAudioSourceAvailable else { return nil }
+        return getCaptureDeviceInput(.audio, .unspecified, false)
     }
     nonisolated func startCaptureSession() async throws {
         await captureSession.startRunning()
     }
     func setupDevice(_ device: any CaptureDevice) throws {
         try device.lockForConfiguration()
+        defer { device.unlockForConfiguration() }
+        if !attributes.codeScanningTypes.isEmpty {
+            if device.virtualDeviceSwitchOverVideoZoomFactors.isEmpty == false {
+                let defaultVideoZoomFactor: CGFloat = 1
+                attributes.defaultVideoZoomFactor = defaultVideoZoomFactor
+                if attributes.zoomFactor == 1 { attributes.zoomFactor = defaultVideoZoomFactor }
+            }
+        }
         device.setExposureMode(attributes.cameraExposure.mode, duration: attributes.cameraExposure.duration, iso: attributes.cameraExposure.iso)
         device.setExposureTargetBias(attributes.cameraExposure.targetBias)
         device.setFrameRate(attributes.frameRate)
         device.setZoomFactor(attributes.zoomFactor)
         device.setLightMode(attributes.lightMode)
         device.hdrMode = attributes.hdrMode
-        device.unlockForConfiguration()
     }
 }
 
@@ -144,14 +156,73 @@ extension CameraManager {
 
 // MARK: Capture Output
 extension CameraManager {
-    func setCodeScanningTypes(_ types: [AVMetadataObject.ObjectType]) {
+    func setCodeScanningTypes(
+        _ types: [AVMetadataObject.ObjectType],
+        capturesImage: Bool = false,
+        rect: CGRect? = nil
+    ) {
         guard !isChanging else { return }
         attributes.codeScanningTypes = types
+        attributes.capturesImageOnCodeScan = !types.isEmpty && capturesImage
+        setCodeScanningRect(rect)
     }
 
-    func setScannedCode(_ code: CameraScannedCode) {
+    func setCodeScanningRect(_ rect: CGRect?) {
+        let unitRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        let normalizedRect = rect?.standardized.intersection(unitRect)
+        attributes.codeScanningRect = normalizedRect?.isNull == false ? normalizedRect : nil
+        codeOutput.setRectOfInterest(attributes.codeScanningRect)
+        #if DEBUG
+        updateCodeScanningDebugOverlay()
+        #endif
+    }
+
+    func setCodeScanningRect(inPreviewCoordinates rect: CGRect) {
+        updateCodeScanningRect(inPreviewCoordinates: rect, retryAfterLayout: true)
+    }
+
+    private func updateCodeScanningRect(inPreviewCoordinates rect: CGRect, retryAfterLayout: Bool) {
+        let bounds = cameraView.bounds
+        guard bounds.width > 0, bounds.height > 0 else {
+            guard retryAfterLayout else { return }
+            DispatchQueue.main.async { [weak self] in
+                self?.updateCodeScanningRect(inPreviewCoordinates: rect, retryAfterLayout: false)
+            }
+            return
+        }
+
+        cameraLayer.frame = bounds
+        let rectOfInterest = cameraLayer.metadataOutputRectConverted(fromLayerRect: rect)
+        guard rectOfInterest.origin.x.isFinite,
+              rectOfInterest.origin.y.isFinite,
+              rectOfInterest.width.isFinite,
+              rectOfInterest.height.isFinite,
+              !rectOfInterest.isEmpty
+        else { return }
+
+        setCodeScanningRect(rectOfInterest)
+    }
+
+    #if DEBUG
+    private func updateCodeScanningDebugOverlay() {
+        guard cameraView != nil, cameraLayer.bounds.isEmpty == false else { return }
+
+        let previewRect = cameraLayer.layerRectConverted(
+            fromMetadataOutputRect: codeOutput.rectOfInterest
+        )
+        codeScanningDebugView.update(frame: previewRect)
+    }
+    #endif
+
+    func setScannedCode(_ code: CameraScannedCode, image: UIImage? = nil) {
         guard attributes.scannedCode?.value != code.value || attributes.scannedCode?.type != code.type else { return }
-        attributes.scannedCode = code
+        attributes.scannedCode = .init(value: code.value, type: code.type, image: image)
+    }
+
+    func captureScannedCodeImage(for code: CameraScannedCode) {
+        photoOutput.captureScannedCodeImage { [weak self] image in
+            self?.setScannedCode(code, image: image)
+        }
     }
 
     func captureOutput() {
@@ -433,7 +504,8 @@ extension CameraManager {
 
         attributes = newAttributes
     }
-    func getCameraInput(_ position: CameraPosition? = nil) -> (any CaptureDeviceInput)? { switch position ?? attributes.cameraPosition {
+    func getCameraInput(_ position: CameraPosition? = nil) -> (any CaptureDeviceInput)? {
+        switch position ?? attributes.cameraPosition {
         case .front: frontCameraInput
         case .back: backCameraInput
     }}

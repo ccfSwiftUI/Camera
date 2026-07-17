@@ -14,6 +14,7 @@ import AVKit
 @MainActor class CameraManagerPhotoOutput: NSObject {
     private(set) var parent: CameraManager!
     private(set) var output: AVCapturePhotoOutput = .init()
+    private var scannedCodeImageHandlers: [Int64: (UIImage?) -> Void] = [:]
 }
 
 // MARK: Setup
@@ -38,11 +39,19 @@ extension CameraManagerPhotoOutput {
         output.capturePhoto(with: settings, delegate: self)
         parent.cameraMetalView.performImageCaptureAnimation()
     }
+
+    func captureScannedCodeImage(completion: @escaping (UIImage?) -> Void) {
+        let settings = getPhotoOutputSettings(flashMode: .off)
+        scannedCodeImageHandlers[settings.uniqueID] = completion
+
+        configureOutput()
+        output.capturePhoto(with: settings, delegate: self)
+    }
 }
 private extension CameraManagerPhotoOutput {
-    func getPhotoOutputSettings() -> AVCapturePhotoSettings {
+    func getPhotoOutputSettings(flashMode: AVCaptureDevice.FlashMode? = nil) -> AVCapturePhotoSettings {
         let settings = AVCapturePhotoSettings()
-        settings.flashMode = parent.attributes.flashMode.toDeviceFlashMode()
+        settings.flashMode = flashMode ?? parent.attributes.flashMode.toDeviceFlashMode()
         return settings
     }
     func configureOutput() {
@@ -56,13 +65,23 @@ private extension CameraManagerPhotoOutput {
 // MARK: Receive Data
 extension CameraManagerPhotoOutput: @preconcurrency AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: (any Error)?) {
+        let scannedCodeImageHandler = scannedCodeImageHandlers.removeValue(forKey: photo.resolvedSettings.uniqueID)
         guard let imageData = photo.fileDataRepresentation(),
               let ciImage = CIImage(data: imageData)
-        else { return }
+        else {
+            scannedCodeImageHandler?(nil)
+            return
+        }
 
         let capturedCIImage = prepareCIImage(ciImage, parent.attributes.cameraFilters)
         let capturedCGImage = prepareCGImage(capturedCIImage)
         let capturedUIImage = prepareUIImage(capturedCGImage)
+
+        if let scannedCodeImageHandler {
+            scannedCodeImageHandler(capturedUIImage)
+            return
+        }
+
         let capturedMedia = MCameraMedia(data: capturedUIImage)
 
         parent.setCapturedMedia(capturedMedia)

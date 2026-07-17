@@ -31,10 +31,12 @@ class MockCaptureDevice: NSObject, CaptureDevice {
     var hasTorch: Bool { true }
     var isExposurePointOfInterestSupported: Bool { true }
     var isFocusPointOfInterestSupported: Bool { true }
+    var isAutoFocusRangeRestrictionSupported: Bool { true }
 
     // MARK: Setters
     var videoZoomFactor: CGFloat = 1
     var focusMode: AVCaptureDevice.FocusMode = .autoFocus
+    var autoFocusRangeRestriction: AVCaptureDevice.AutoFocusRangeRestriction = .none
     var focusPointOfInterest: CGPoint = .zero
     var exposurePointOfInterest: CGPoint = .zero
     var lightMode: CameraLightMode = .off
@@ -42,11 +44,12 @@ class MockCaptureDevice: NSObject, CaptureDevice {
     var activeVideoMaxFrameDuration: CMTime = .init()
     var exposureMode: AVCaptureDevice.ExposureMode = .continuousAutoExposure
     var hdrMode: CameraHDRMode = .auto
-
+    var virtualDeviceSwitchOverVideoZoomFactors: [NSNumber] = []
     // MARK: Methods
     func lockForConfiguration() throws { return }
     func unlockForConfiguration() { return }
     func isExposureModeSupported(_ exposureMode: AVCaptureDevice.ExposureMode) -> Bool { true }
+    func isFocusModeSupported(_ focusMode: AVCaptureDevice.FocusMode) -> Bool { true }
     func setExposureModeCustom(duration: CMTime, iso: Float, completionHandler: ((CMTime) -> Void)?) {
         _exposureDuration = duration
         _iso = iso

@@ -120,6 +120,18 @@ public extension MCameraScreen {
     func setZoomFactor(_ zoomFactor: CGFloat) throws { try cameraManager.setCameraZoomFactor(zoomFactor) }
 
     /**
+     Updates the normalized scan region for metadata detection. Pass `nil` to scan the full camera image.
+     */
+    func setCodeScanningRect(_ rect: CGRect?) { cameraManager.setCodeScanningRect(rect) }
+
+    /**
+     Updates the scan region using the camera preview's coordinate system.
+     */
+    func setCodeScanningRect(inPreviewCoordinates rect: CGRect) {
+        cameraManager.setCodeScanningRect(inPreviewCoordinates: rect)
+    }
+
+    /**
      Set the flash mode of the camera.
 
      For available options, please refer to the ``CameraFlashMode`` documentation.

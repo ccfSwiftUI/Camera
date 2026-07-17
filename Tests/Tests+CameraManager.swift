@@ -27,6 +27,8 @@ extension CameraManagerTests {
         try await setupCamera()
 
         #expect(cameraManager.captureSession.outputs.count == 4)
+        #expect(currentDevice.focusMode == .continuousAutoFocus)
+        #expect(currentDevice.autoFocusRangeRestriction == .near)
     }
 
     @Test("Setup: Default Attributes") func setupWithDefaultAttributes() async throws {

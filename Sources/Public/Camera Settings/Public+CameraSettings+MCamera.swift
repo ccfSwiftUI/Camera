@@ -252,10 +252,21 @@ public extension MCamera {
      Enables real-time QR code and barcode scanning while the camera session is running.
 
      The scanner uses the selected metadata types and reports each newly detected value through ``onCodeScanned(_:)``.
+     Set `capturesImage` to `true` when the scanned-code callback also needs a high-resolution image for work such as OCR.
      Call this before ``startSession()``. Leave it disabled (the default) to preserve the usual photo/video-only camera.
      */
-    func setCodeScanning(_ isEnabled: Bool = true, types: [AVMetadataObject.ObjectType] = [.qr, .ean8, .ean13, .code128, .code39, .code93, .upce, .pdf417, .aztec, .dataMatrix, .interleaved2of5, .itf14]) -> Self {
-        manager.setCodeScanningTypes(isEnabled ? types : [])
+    func setCodeScanning(_ isEnabled: Bool = true, types: [AVMetadataObject.ObjectType] = [.qr, .ean8, .ean13, .code128, .code39, .code93, .upce, .pdf417, .aztec, .dataMatrix, .interleaved2of5, .itf14], capturesImage: Bool = false, rect: CGRect? = nil) -> Self {
+        manager.setCodeScanningTypes(isEnabled ? types : [], capturesImage: capturesImage, rect: rect)
+        return self
+    }
+
+    /**
+     Sets the normalized scan region for metadata detection. Pass `nil` to scan the full camera image.
+
+     The rectangle uses ``AVCaptureMetadataOutput/rectOfInterest`` coordinates, where each value is in `0...1`.
+     */
+    func setCodeScanningRect(_ rect: CGRect?) -> Self {
+        manager.setCodeScanningRect(rect)
         return self
     }
 
@@ -364,7 +375,21 @@ public extension MCamera {
      The callback contains the encoded value, its AVFoundation metadata type, and a controller for closing or otherwise controlling the camera.
      A value is reported once until the camera observes a different value.
      */
-    func onCodeScanned(_ action: @escaping (String, AVMetadataObject.ObjectType, MCamera.Controller) -> ()) -> Self { config.codeScannedAction = action; return self }
+    func onCodeScanned(_ action: @escaping (String, AVMetadataObject.ObjectType, MCamera.Controller) -> ()) -> Self {
+        config.codeScannedAction = { value, type, _, controller in action(value, type, controller) }
+        return self
+    }
+
+    /**
+     Defines the action called when the camera recognizes a QR code or barcode, optionally including a high-resolution image captured at the same time.
+
+     To receive an image, enable `capturesImage` in ``setCodeScanning(_:types:capturesImage:)``. The image is nil if capture fails or image capture is disabled.
+     The additional image capture doesn't display the captured-media screen or trigger ``onImageCaptured(_:)``.
+     */
+    func onCodeScanned(_ action: @escaping (String, AVMetadataObject.ObjectType, UIImage?, MCamera.Controller) -> ()) -> Self {
+        config.codeScannedAction = action
+        return self
+    }
 }
 
 // MARK: Others

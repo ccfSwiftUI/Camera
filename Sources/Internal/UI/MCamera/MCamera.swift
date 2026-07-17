@@ -146,7 +146,7 @@ private extension MCamera {
     }
     func onScannedCodeChange(_ code: CameraScannedCode?) {
         guard let code else { return }
-        config.codeScannedAction(code.value, code.type, .init(mCamera: self))
+        config.codeScannedAction(code.value, code.type, code.image, .init(mCamera: self))
     }
 }
 private extension MCamera {

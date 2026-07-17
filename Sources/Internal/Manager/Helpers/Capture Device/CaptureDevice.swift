@@ -31,10 +31,12 @@ protocol CaptureDevice: NSObject {
     var hasTorch: Bool { get }
     var isExposurePointOfInterestSupported: Bool { get }
     var isFocusPointOfInterestSupported: Bool { get }
+    var isAutoFocusRangeRestrictionSupported: Bool { get }
 
     // MARK: Getters & Setters
     var videoZoomFactor: CGFloat { get set }
     var focusMode: AVCaptureDevice.FocusMode { get set }
+    var autoFocusRangeRestriction: AVCaptureDevice.AutoFocusRangeRestriction { get set }
     var focusPointOfInterest: CGPoint { get set }
     var exposurePointOfInterest: CGPoint { get set }
     var lightMode: CameraLightMode { get set }
@@ -42,11 +44,13 @@ protocol CaptureDevice: NSObject {
     var activeVideoMaxFrameDuration: CMTime { get set }
     var exposureMode: AVCaptureDevice.ExposureMode { get set }
     var hdrMode: CameraHDRMode { get set }
+    var virtualDeviceSwitchOverVideoZoomFactors: [NSNumber] { get }
 
     // MARK: Methods
     func lockForConfiguration() throws
     func unlockForConfiguration()
     func isExposureModeSupported(_ exposureMode: AVCaptureDevice.ExposureMode) -> Bool
+    func isFocusModeSupported(_ focusMode: AVCaptureDevice.FocusMode) -> Bool
     func setExposureModeCustom(duration: CMTime, iso: Float, completionHandler: (@Sendable (CMTime) -> Void)?)
     func setExposureTargetBias(_ bias: Float, completionHandler handler: (@Sendable (CMTime) -> ())?)
 }
